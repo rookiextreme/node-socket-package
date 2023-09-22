@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Test</title>
+    <style>
+        /* Chat containers */
+        .container {
+        border: 2px solid #dedede;
+        background-color: #f1f1f1;
+        border-radius: 5px;
+        padding: 10px;
+        margin: 10px 0;
+        }
+
+        /* Darker chat container */
+        .darker {
+        border-color: #ccc;
+        background-color: #ddd;
+        }
+
+        /* Clear floats */
+        .container::after {
+        content: "";
+        clear: both;
+        display: table;
+        }
+
+        /* Style images */
+        .container img {
+        float: left;
+        max-width: 60px;
+        width: 100%;
+        margin-right: 20px;
+        border-radius: 50%;
+        }
+
+        /* Style the right image */
+        .container img.right {
+        float: right;
+        margin-left: 20px;
+        margin-right:0;
+        }
+
+        /* Style time text */
+        .time-right {
+        float: right;
+        color: #aaa;
+        }
+
+        /* Style time text */
+        .time-left {
+        float: left;
+        color: #999;
+        }
+    </style>
+</head>
+<body style="background-color: black;">
+    <h2>Chat Messages</h2>
+
+    <section id="chat-row">
+    </section>
+
+    <div class="container darker">
+        <input type="text" id="chat-text" style="width: 100%;height: 50px;" value="" placeholder="Type Your Message">
+    </div>
+
+    <script>
+        function heartbeat() {
+            clearTimeout(this.pingTimeout);
+
+            this.pingTimeout = setTimeout(() => {
+                this.terminate();
+            }, 30000 + 1000);
+        }
+
+        let username = prompt('Enter Your Name');
+        let type = 'chat';
+        let endpoint = 'ws://127.0.0.1:4000/start-server?channel=' + type + '&username=' + username;
+
+        let ws = new WebSocket(endpoint);
+
+        ws.addEventListener("open", (event) => {
+            ws.send(JSON.stringify({
+                type : 'start-ping'
+            }));
+        });
+
+        ws.addEventListener("message", (event) => {
+            let data = JSON.parse(event.data);
+            if(data.sendby != username){
+                appendReceiver(data.sendby, data.message);
+            }
+        });
+
+        ws.addEventListener('ping', heartbeat);
+        ws.addEventListener('close', function clear() {
+            clearTimeout(this.pingTimeout);
+        });
+        
+        document.getElementById('chat-text').addEventListener("keypress", function(evt){
+            if(evt.key == 'Enter'){
+                let message =  document.getElementById('chat-text').value;
+                appendSelf(username, message);
+                
+                if(username == 'Meor'){
+                    ws.send(JSON.stringify({
+                        type: 'send-chat',
+                        data: {
+                            sendto: 'Amir',
+                            sendby: username,
+                            message: message
+                        }
+                    }));
+                }else{
+                    ws.send(JSON.stringify({
+                        type: 'send-chat',
+                        data: {
+                            sendto: 'Meor',
+                            sendby: username,
+                            message: message
+                        }
+                    }));
+                }
+                document.getElementById('chat-text').value = '';
+            }
+        });
+
+        function appendSelf(username, message){
+            let div = document.getElementById('chat-row');
+            div.innerHTML += '<div class="container">' +
+                '<p style="width: 100%;">'+ username +' Said</p>' +
+                '<p>'+ message +'</p>' +
+                '<span class="time-right">11:00</span>' +
+            '</div>';
+        };
+
+        function appendReceiver(username, message){
+            let div = document.getElementById('chat-row');
+            div.innerHTML += '<div class="container">' +
+                '<p style="width: 100%;">'+ username +' Said</p>' +
+                '<p>'+ message +'</p>' +
+                '<span class="time-right">11:00</span>' +
+            '</div>';
+        };
+    </script>
+</body>
+</html>

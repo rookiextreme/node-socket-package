@@ -1,0 +1,22 @@
+{
+  "name": "official_chat_server",
+  "version": "1.0.0",
+  "description": "Official Simple Chat Server",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "keywords": [
+    "Chat",
+    "Real",
+    "Time"
+  ],
+  "type": "module",
+  "author": "RXBarbatos",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.14.2"
+  }
+}
