@@ -2,82 +2,67 @@ import { WebSocketServer } from "ws";
 
 var serverList = new Map();
 
+serverList.set('chat', {
+    group: new Map(),
+    size: 0
+});
+
+function channelUser(channel, user){
+    return `${channel}-${user}`;
+}
+
 function heartbeat() {
     this.isAlive = true;
 }
 
-function checkAvailableServer(type){
-    let server = serverList.get(type);
-    
-    if(!server){
-        return createNewServer(type);
-    }
-    
-    return server.id;
-}
+function checkAvailableServer(channel, user_id){
+    let server = new WebSocketServer({ noServer: true });
+    server.on('connection', (ws, request) => {
+        console.log('Server Connected');
 
-function createNewServer(type){
-    let s = new WebSocketServer({ noServer: true });
-    let id = Object.keys(serverList).length + 1;
-    serverList.set(type, {
-        id: id,
-        type: type,
-        server: s,
-        client: new Map()
-    });
-
-    return id;
-}
-
-function upgradeConn(request, socket, head,id, type, username){
-    let s = serverList.get(type);
-
-    if(id == s.id){
-        let serve = s.server;
-        serve.handleUpgrade(request, socket, head, function done(ws) {
-            s.client.set(username, ws);
-            serve.emit('connection', ws, request);
-        });
-
-        serve.on('connection', (ws, request) => {
-            console.log('Connected');
-        });
-    }
-}
-
-function serveClient(type, username){
-    let s = serverList.get(type);
-    if(s){
-        let clientSocket = s.client.get(username);
-        clientSocket.on('message', (pData)=> {
+        ws.on('message', (pData)=> {
             let data = JSON.parse(pData);
             if(data.type == 'start-ping'){
-                clientSocket.on('pong', heartbeat);
+                ws.on('pong', heartbeat);
+                console.log('Ping Started...');
             }
 
-            //For Chat
-            if(data.type == 'send-chat'){
-                let receiver = s.client.get(data.data.sendto);
-                receiver.send(JSON.stringify({
-                    username : data.data.sendto,
-                    sendby: data.data.sendby,
-                    message : data.data.message
-                }));
+            if(data.type == 'start-ping'){
+                ws.on('pong', heartbeat);
+                console.log('Ping Started...');
+            }
+
+            if(data.type == 'get-all-user'){
+                console.log(data);
             }
         })
 
         const interval = setInterval(function ping() {
-            if (clientSocket.isAlive === false) return ws.terminate();
-          
-            clientSocket.isAlive = false;
-            clientSocket.ping();
-        }, 30000);
+            if (ws.isAlive === false) return ws.terminate();
+            
+            ws.isAlive = false;
+            ws.ping();
+        }, 1000);
+    });
 
-        clientSocket.on('close', (data)=> {
-            s.client.delete(username);
-            clearInterval(interval);
-        })
-    }
+    // server.on('close', (data)=> {
+    //     // s.client.delete(username);
+    //     clearInterval(interval);
+    // })
+    return server;
 }
 
-export {serverList, checkAvailableServer, upgradeConn, serveClient}
+function upgradeConn(request, socket, head, server, channel, user_id){
+    server.handleUpgrade(request, socket, head, function done(ws) {
+        server.emit('connection', ws, request);
+        console.log('Connection Upgraded...');
+    });
+
+    let getChannel = serverList.get(channel);
+    getChannel.group.set(channelUser(channel, user_id), {
+        server: server
+    });
+}
+
+
+export {serverList, checkAvailableServer, upgradeConn}
